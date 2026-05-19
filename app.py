@@ -4,6 +4,8 @@ import io
 import google.generativeai as genai
 import anthropic
 import os
+import sys
+
 try:
     from dotenv import load_dotenv
     # Load environment variables
@@ -55,7 +57,10 @@ def calculate_cost(model_name, input_tokens, output_tokens):
 st.title("Prompt Comparison App")
 
 if not HAS_DOTENV:
-    st.error("The 'python-dotenv' package is not installed. Please install it using: pip install python-dotenv")
+    st.error("The 'python-dotenv' package is not installed or cannot be found.")
+    st.info(f"**Current Python Executable:** {sys.executable}")
+    st.info(f"**Python Path:** {sys.path}")
+    st.warning("Please try running: `pip uninstall dotenv` then `pip install python-dotenv` in your terminal.")
 
 with st.sidebar:
     st.header("Model Selection")
