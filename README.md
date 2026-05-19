@@ -23,7 +23,7 @@ A Streamlit-based web application to facilitate user entry of prompts, dynamic c
 2. Install the required dependencies:
 
 ```bash
-pip install streamlit google-generativeai anthropic pandas openpyxl python-dotenv
+pip install -r requirements.txt
 ```
 
 3. Create a `.env` file in the root directory and add your API keys:
