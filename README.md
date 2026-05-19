@@ -26,6 +26,8 @@ A Streamlit-based web application to facilitate user entry of prompts, dynamic c
 pip install -r requirements.txt
 ```
 
+*Note: Make sure you install `python-dotenv`, not the `dotenv` package.*
+
 3. Create a `.env` file in the root directory and add your API keys:
 
 ```env

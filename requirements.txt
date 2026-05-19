@@ -3,4 +3,4 @@ google-generativeai
 anthropic
 pandas
 openpyxl
-python-dotenv
+python-dotenv>=1.0.0
