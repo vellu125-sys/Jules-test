@@ -3,6 +3,11 @@ import pandas as pd
 import io
 import google.generativeai as genai
 import anthropic
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 st.set_page_config(page_title="Prompt Comparison App", layout="wide")
 
@@ -46,10 +51,6 @@ def calculate_cost(model_name, input_tokens, output_tokens):
 st.title("Prompt Comparison App")
 
 with st.sidebar:
-    st.header("API Configuration")
-    gemini_api_key = st.text_input("Gemini API Key", type="password")
-    claude_api_key = st.text_input("Claude API Key", type="password")
-
     st.header("Model Selection")
     model_provider = st.selectbox("Select Model Provider", ["Gemini", "Claude"])
 
@@ -69,10 +70,11 @@ if st.button("Generate Response"):
     else:
         with st.spinner("Generating response..."):
             if model_provider == "Gemini":
-                if not gemini_api_key:
-                    st.error("Please enter Gemini API Key.")
+                api_key = os.getenv("GEMINI_API_KEY")
+                if not api_key or api_key == "your_gemini_api_key_here":
+                    st.error("Please configure GEMINI_API_KEY in the .env file.")
                 else:
-                    response_text, usage = call_gemini(gemini_api_key, model_name, prompt)
+                    response_text, usage = call_gemini(api_key, model_name, prompt)
                     if usage:
                         input_tokens = usage.prompt_token_count
                         output_tokens = usage.candidates_token_count
@@ -90,10 +92,11 @@ if st.button("Generate Response"):
                     else:
                         st.error(response_text)
             else:
-                if not claude_api_key:
-                    st.error("Please enter Claude API Key.")
+                api_key = os.getenv("CLAUDE_API_KEY")
+                if not api_key or api_key == "your_claude_api_key_here":
+                    st.error("Please configure CLAUDE_API_KEY in the .env file.")
                 else:
-                    response_text, usage = call_claude(claude_api_key, model_name, prompt)
+                    response_text, usage = call_claude(api_key, model_name, prompt)
                     if usage:
                         input_tokens = usage.input_tokens
                         output_tokens = usage.output_tokens

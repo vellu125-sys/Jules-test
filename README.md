@@ -23,7 +23,14 @@ A Streamlit-based web application to facilitate user entry of prompts, dynamic c
 2. Install the required dependencies:
 
 ```bash
-pip install streamlit google-generativeai anthropic pandas openpyxl
+pip install streamlit google-generativeai anthropic pandas openpyxl python-dotenv
+```
+
+3. Create a `.env` file in the root directory and add your API keys:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+CLAUDE_API_KEY=your_claude_api_key_here
 ```
 
 ## Usage
@@ -35,8 +42,7 @@ streamlit run app.py
 ```
 
 2. Open the application in your browser (usually at `http://localhost:8501`).
-3. Enter your API keys in the sidebar.
-4. Select your desired model provider and model.
+3. Select your desired model provider and model in the sidebar.
 5. Enter your prompt in the main area and click **Generate Response**.
 6. View the results in the comparison table below.
 7. Click **Export to Excel** to download your session history.
