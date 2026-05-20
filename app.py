@@ -95,6 +95,8 @@ with st.sidebar:
 
     st.header("LLM Judge Configuration")
     enable_judge = st.checkbox("Enable LLM Judge")
+    judge_provider = None
+    judge_model_name = None
     if enable_judge:
         judge_provider = st.selectbox("Select Judge Provider", ["Gemini", "Claude"], key="judge_provider")
         if judge_provider == "Gemini":
@@ -102,85 +104,150 @@ with st.sidebar:
         else:
             judge_model_name = st.selectbox("Select Claude Judge Model", ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"], key="claude_judge")
 
+    st.header("Prompt Optimization")
+    optimization_mode = st.checkbox("Optimization Mode (Batch)")
+    if optimization_mode:
+        uploaded_file = st.file_uploader("Upload Production Data (CSV or Excel)", type=["csv", "xlsx"])
+        if uploaded_file:
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    prod_data = pd.read_csv(uploaded_file)
+                else:
+                    prod_data = pd.read_excel(uploaded_file)
+                st.success(f"Loaded {len(prod_data)} rows of production data.")
+                column_to_use = st.selectbox("Select Column for Prompt Injection", prod_data.columns)
+            except Exception as e:
+                st.error(f"Error loading file: {e}")
+
 if "history" not in st.session_state:
     st.session_state.history = []
 
-prompt = st.text_area("Enter your prompt here:", height=150)
+if optimization_mode:
+    st.info("In Optimization Mode, use `{{data}}` as a placeholder for production data from your file.")
+    prompt = st.text_area("Enter your prompt template here:", height=150, value="Analyze this production data: {{data}}")
+else:
+    prompt = st.text_area("Enter your prompt here:", height=150)
 
-if st.button("Generate Response"):
+def process_prompt(prompt_text, model_provider, model_name, enable_judge, judge_provider, judge_model_name):
+    response_text = ""
+    usage = None
+    input_tokens = 0
+    output_tokens = 0
+    total_tokens = 0
+    cost = 0.0
+
+    if model_provider == "Gemini":
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key or api_key == "your_gemini_api_key_here":
+            return "Error: Gemini API Key not configured", None, 0, 0, 0, 0.0
+        response_text, usage = call_gemini(api_key, model_name, prompt_text)
+        if usage:
+            input_tokens = usage.prompt_token_count
+            output_tokens = usage.candidates_token_count
+            total_tokens = usage.total_token_count
+            cost = calculate_cost(model_name, input_tokens, output_tokens)
+    else:
+        api_key = os.getenv("CLAUDE_API_KEY")
+        if not api_key or api_key == "your_claude_api_key_here":
+            return "Error: Claude API Key not configured", None, 0, 0, 0, 0.0
+        response_text, usage = call_claude(api_key, model_name, prompt_text)
+        if usage:
+            input_tokens = usage.input_tokens
+            output_tokens = usage.output_tokens
+            total_tokens = input_tokens + output_tokens
+            cost = calculate_cost(model_name, input_tokens, output_tokens)
+
+    judge_eval = "N/A"
+    if usage and enable_judge:
+        judge_eval, judge_usage = call_llm_judge(judge_provider, judge_model_name, prompt_text, response_text)
+        if judge_usage:
+            if judge_provider == "Gemini":
+                j_input = judge_usage.prompt_token_count
+                j_output = judge_usage.candidates_token_count
+            else:
+                j_input = judge_usage.input_tokens
+                j_output = judge_usage.output_tokens
+
+            cost += calculate_cost(judge_model_name, j_input, j_output)
+            input_tokens += j_input
+            output_tokens += j_output
+            total_tokens += (j_input + j_output)
+
+    return response_text, judge_eval, input_tokens, output_tokens, total_tokens, cost
+
+if st.button("Generate Response" if not optimization_mode else "Run Batch Optimization"):
     if not prompt:
         st.warning("Please enter a prompt.")
+    elif optimization_mode and ('uploaded_file' not in locals() or uploaded_file is None):
+        st.warning("Please upload a production data file.")
     else:
-        with st.spinner("Generating response..."):
-            response_text = ""
-            usage = None
-            input_tokens = 0
-            output_tokens = 0
-            total_tokens = 0
-            cost = 0.0
+        if optimization_mode:
+            batch_prompts = []
+            for _, row in prod_data.iterrows():
+                data_val = str(row[column_to_use])
+                batch_prompts.append(prompt.replace("{{data}}", data_val))
 
-            if model_provider == "Gemini":
-                api_key = os.getenv("GEMINI_API_KEY")
-                if not api_key or api_key == "your_gemini_api_key_here":
-                    st.error("Please configure GEMINI_API_KEY in the .env file.")
+            progress_bar = st.progress(0)
+            for i, p_text in enumerate(batch_prompts):
+                with st.spinner(f"Processing item {i+1}/{len(batch_prompts)}..."):
+                    res, eval, in_t, out_t, tot_t, c = process_prompt(
+                        p_text, model_provider, model_name,
+                        enable_judge, judge_provider, judge_model_name
+                    )
+                    st.session_state.history.append({
+                        "Model": model_name,
+                        "Prompt": p_text,
+                        "Response": res,
+                        "Judge Model": judge_model_name if enable_judge else "N/A",
+                        "Judge Evaluation": eval,
+                        "Input Tokens": in_t,
+                        "Output Tokens": out_t,
+                        "Total Tokens": tot_t,
+                        "Cost ($)": f"{c:.6f}"
+                    })
+                progress_bar.progress((i + 1) / len(batch_prompts))
+            st.success("Batch Optimization Complete!")
+        else:
+            with st.spinner("Generating response..."):
+                res, eval, in_t, out_t, tot_t, c = process_prompt(
+                    prompt, model_provider, model_name,
+                    enable_judge, judge_provider, judge_model_name
+                )
+                if in_t > 0 or "Error" not in res:
+                    st.session_state.history.append({
+                        "Model": model_name,
+                        "Prompt": prompt,
+                        "Response": res,
+                        "Judge Model": judge_model_name if enable_judge else "N/A",
+                        "Judge Evaluation": eval,
+                        "Input Tokens": in_t,
+                        "Output Tokens": out_t,
+                        "Total Tokens": tot_t,
+                        "Cost ($)": f"{c:.6f}"
+                    })
                 else:
-                    response_text, usage = call_gemini(api_key, model_name, prompt)
-                    if usage:
-                        input_tokens = usage.prompt_token_count
-                        output_tokens = usage.candidates_token_count
-                        total_tokens = usage.total_token_count
-                        cost = calculate_cost(model_name, input_tokens, output_tokens)
-                    else:
-                        st.error(response_text)
-            else:
-                api_key = os.getenv("CLAUDE_API_KEY")
-                if not api_key or api_key == "your_claude_api_key_here":
-                    st.error("Please configure CLAUDE_API_KEY in the .env file.")
-                else:
-                    response_text, usage = call_claude(api_key, model_name, prompt)
-                    if usage:
-                        input_tokens = usage.input_tokens
-                        output_tokens = usage.output_tokens
-                        total_tokens = input_tokens + output_tokens
-                        cost = calculate_cost(model_name, input_tokens, output_tokens)
-                    else:
-                        st.error(response_text)
-
-            if usage:
-                judge_eval = "N/A"
-                if enable_judge:
-                    with st.spinner("Judge is evaluating..."):
-                        judge_eval, judge_usage = call_llm_judge(judge_provider, judge_model_name, prompt, response_text)
-                        if judge_usage:
-                            if judge_provider == "Gemini":
-                                j_input = judge_usage.prompt_token_count
-                                j_output = judge_usage.candidates_token_count
-                            else:
-                                j_input = judge_usage.input_tokens
-                                j_output = judge_usage.output_tokens
-
-                            cost += calculate_cost(judge_model_name, j_input, j_output)
-                            input_tokens += j_input
-                            output_tokens += j_output
-                            total_tokens += (j_input + j_output)
-                        else:
-                            st.warning(f"Judge Error: {judge_eval}")
-
-                st.session_state.history.append({
-                    "Model": model_name,
-                    "Prompt": prompt,
-                    "Response": response_text,
-                    "Judge Model": judge_model_name if enable_judge else "N/A",
-                    "Judge Evaluation": judge_eval,
-                    "Input Tokens": input_tokens,
-                    "Output Tokens": output_tokens,
-                    "Total Tokens": total_tokens,
-                    "Cost ($)": f"{cost:.6f}"
-                })
+                    st.error(res)
 
 if st.session_state.history:
-    st.header("Comparison Table")
     df = pd.DataFrame(st.session_state.history)
+
+    if optimization_mode:
+        st.header("Optimization Dashboard")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Runs", len(df))
+        col2.metric("Total Tokens", df["Total Tokens"].sum())
+        col3.metric("Total Cost", f"${df['Cost ($)'].astype(float).sum():.4f}")
+
+        st.subheader("Performance Highlights")
+        # Simple heuristic to find poor-performing prompts (e.g., if judge mentioned 'poor' or score < 7)
+        poor_mask = df["Judge Evaluation"].str.contains("score: [0-6]/10|poor|incorrect", case=False, na=False)
+        if poor_mask.any():
+            st.warning("Identified poor-performing responses. Consider experimenting with new prompt templates.")
+            st.table(df[poor_mask])
+        else:
+            st.success("All responses evaluated positively by the judge.")
+
+    st.header("Comparison Table")
     st.table(df)
 
     # Export to Excel
