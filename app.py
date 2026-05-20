@@ -5,19 +5,23 @@ import google.generativeai as genai
 import anthropic
 import os
 import sys
-import phoenix as px
-from phoenix.otel import register
-from openinference.instrumentation.anthropic import AnthropicInstrumentor
-from phoenix.evals import (
-    RAGAS_RELEVANCY_PROMPT,
-    OpenAIModel,
-    download_benchmark_dataset,
-    run_evals,
-)
-
-# Initialize Phoenix
-session = px.launch_app()
-AnthropicInstrumentor().instrument()
+try:
+    import phoenix as px
+    from phoenix.otel import register
+    from openinference.instrumentation.anthropic import AnthropicInstrumentor
+    from phoenix.evals import (
+        RAGAS_RELEVANCY_PROMPT,
+        OpenAIModel,
+        download_benchmark_dataset,
+        run_evals,
+    )
+    # Initialize Phoenix
+    session = px.launch_app()
+    AnthropicInstrumentor().instrument()
+    HAS_PHOENIX = True
+except Exception as e:
+    HAS_PHOENIX = False
+    PHOENIX_ERROR = str(e)
 
 try:
     from dotenv import load_dotenv
@@ -122,14 +126,21 @@ with st.sidebar:
         model_name = st.selectbox("Select Claude Model", ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"])
 
     st.header("Arize Phoenix")
-    st.write(f"Phoenix UI: [Link]({session.url})")
+    if HAS_PHOENIX:
+        st.write(f"Phoenix UI: [Link]({session.url})")
+    else:
+        st.warning("Arize Phoenix not available.")
+        st.info("To use Phoenix, ensure all dependencies are installed correctly.")
 
     st.header("LLM Judge Configuration")
     enable_judge = st.checkbox("Enable LLM Judge")
     judge_provider = None
     judge_model_name = None
     if enable_judge:
-        judge_provider = st.selectbox("Select Judge Provider", ["Gemini", "Claude", "Arize Phoenix Evaluator"], key="judge_provider")
+        judge_options = ["Gemini", "Claude"]
+        if HAS_PHOENIX:
+            judge_options.append("Arize Phoenix Evaluator")
+        judge_provider = st.selectbox("Select Judge Provider", judge_options, key="judge_provider")
         if judge_provider == "Gemini":
             judge_model_name = st.selectbox("Select Gemini Judge Model", ["gemini-1.5-flash", "gemini-1.5-pro"], key="gemini_judge")
         else:
@@ -268,8 +279,12 @@ if st.session_state.history:
         col1.metric("Total Runs", len(df))
         col2.metric("Total Tokens", df["Total Tokens"].sum())
         col3.metric("Total Cost", f"${df['Cost ($)'].astype(float).sum():.4f}")
-        col4.metric("Arize Phoenix", "Active")
-        st.write(f"🔍 Detailed Traces & Evals: [Open Phoenix UI]({session.url})")
+
+        if HAS_PHOENIX:
+            col4.metric("Arize Phoenix", "Active")
+            st.write(f"🔍 Detailed Traces & Evals: [Open Phoenix UI]({session.url})")
+        else:
+            col4.metric("Arize Phoenix", "Inactive")
 
         st.subheader("Performance Highlights")
         # Simple heuristic to find poor-performing prompts (e.g., if judge mentioned 'poor' or score < 7)
