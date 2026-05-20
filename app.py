@@ -40,6 +40,28 @@ def call_claude(api_key, model_name, prompt):
     except Exception as e:
         return f"Error: {str(e)}", None
 
+def call_llm_judge(provider, model_name, original_prompt, response_text):
+    judge_prompt = f"""
+    You are an impartial judge evaluating the quality of an AI-generated response.
+
+    Original Prompt: {original_prompt}
+    AI Response: {response_text}
+
+    Please evaluate the response based on accuracy, relevance, and completeness.
+    Provide a brief justification and a score out of 10.
+    """
+
+    if provider == "Gemini":
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key or api_key == "your_gemini_api_key_here":
+            return "Error: Gemini API Key not configured", None
+        return call_gemini(api_key, model_name, judge_prompt)
+    else:
+        api_key = os.getenv("CLAUDE_API_KEY")
+        if not api_key or api_key == "your_claude_api_key_here":
+            return "Error: Claude API Key not configured", None
+        return call_claude(api_key, model_name, judge_prompt)
+
 def calculate_cost(model_name, input_tokens, output_tokens):
     costs = {
         "gemini-1.5-flash": {"input": 0.075 / 1_000_000, "output": 0.30 / 1_000_000},
@@ -71,6 +93,15 @@ with st.sidebar:
     else:
         model_name = st.selectbox("Select Claude Model", ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"])
 
+    st.header("LLM Judge Configuration")
+    enable_judge = st.checkbox("Enable LLM Judge")
+    if enable_judge:
+        judge_provider = st.selectbox("Select Judge Provider", ["Gemini", "Claude"], key="judge_provider")
+        if judge_provider == "Gemini":
+            judge_model_name = st.selectbox("Select Gemini Judge Model", ["gemini-1.5-flash", "gemini-1.5-pro"], key="gemini_judge")
+        else:
+            judge_model_name = st.selectbox("Select Claude Judge Model", ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"], key="claude_judge")
+
 if "history" not in st.session_state:
     st.session_state.history = []
 
@@ -81,6 +112,13 @@ if st.button("Generate Response"):
         st.warning("Please enter a prompt.")
     else:
         with st.spinner("Generating response..."):
+            response_text = ""
+            usage = None
+            input_tokens = 0
+            output_tokens = 0
+            total_tokens = 0
+            cost = 0.0
+
             if model_provider == "Gemini":
                 api_key = os.getenv("GEMINI_API_KEY")
                 if not api_key or api_key == "your_gemini_api_key_here":
@@ -92,15 +130,6 @@ if st.button("Generate Response"):
                         output_tokens = usage.candidates_token_count
                         total_tokens = usage.total_token_count
                         cost = calculate_cost(model_name, input_tokens, output_tokens)
-                        st.session_state.history.append({
-                            "Model": model_name,
-                            "Prompt": prompt,
-                            "Response": response_text,
-                            "Input Tokens": input_tokens,
-                            "Output Tokens": output_tokens,
-                            "Total Tokens": total_tokens,
-                            "Cost ($)": f"{cost:.6f}"
-                        })
                     else:
                         st.error(response_text)
             else:
@@ -114,17 +143,40 @@ if st.button("Generate Response"):
                         output_tokens = usage.output_tokens
                         total_tokens = input_tokens + output_tokens
                         cost = calculate_cost(model_name, input_tokens, output_tokens)
-                        st.session_state.history.append({
-                            "Model": model_name,
-                            "Prompt": prompt,
-                            "Response": response_text,
-                            "Input Tokens": input_tokens,
-                            "Output Tokens": output_tokens,
-                            "Total Tokens": total_tokens,
-                            "Cost ($)": f"{cost:.6f}"
-                        })
                     else:
                         st.error(response_text)
+
+            if usage:
+                judge_eval = "N/A"
+                if enable_judge:
+                    with st.spinner("Judge is evaluating..."):
+                        judge_eval, judge_usage = call_llm_judge(judge_provider, judge_model_name, prompt, response_text)
+                        if judge_usage:
+                            if judge_provider == "Gemini":
+                                j_input = judge_usage.prompt_token_count
+                                j_output = judge_usage.candidates_token_count
+                            else:
+                                j_input = judge_usage.input_tokens
+                                j_output = judge_usage.output_tokens
+
+                            cost += calculate_cost(judge_model_name, j_input, j_output)
+                            input_tokens += j_input
+                            output_tokens += j_output
+                            total_tokens += (j_input + j_output)
+                        else:
+                            st.warning(f"Judge Error: {judge_eval}")
+
+                st.session_state.history.append({
+                    "Model": model_name,
+                    "Prompt": prompt,
+                    "Response": response_text,
+                    "Judge Model": judge_model_name if enable_judge else "N/A",
+                    "Judge Evaluation": judge_eval,
+                    "Input Tokens": input_tokens,
+                    "Output Tokens": output_tokens,
+                    "Total Tokens": total_tokens,
+                    "Cost ($)": f"{cost:.6f}"
+                })
 
 if st.session_state.history:
     st.header("Comparison Table")
