@@ -4,3 +4,9 @@ anthropic
 pandas
 openpyxl
 python-dotenv>=1.0.0
+arize-phoenix
+openinference-instrumentation-anthropic
+arize-phoenix-otel
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp
