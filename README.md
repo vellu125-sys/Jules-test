@@ -31,10 +31,32 @@ pip install -r requirements.txt
 
 *Note: Make sure you install `python-dotenv`, not the `dotenv` package.*
 
-#### Troubleshooting Arize Phoenix Installation
-If you encounter errors related to `sqlean-py` or "failed to build wheel", it usually means your system lacks necessary build tools (like C compilers). You can:
-1.  **Install Build Tools**: On Windows, install "Build Tools for Visual Studio". On Linux, install `build-essential`.
-2.  **Skip Arize Phoenix**: The application will still work without Arize Phoenix. You can remove `arize-phoenix` and related packages from `requirements.txt` if you don't need observability.
+#### Resolving `sqlean-py` Build Errors
+Arize Phoenix requires `sqlean-py`, which may need to be compiled from source on some systems. If you see "Failed to build installable wheels for sqlean-py", follow these steps:
+
+**On Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential python3-dev
+pip install --upgrade setuptools wheel pip
+pip install sqlean-py
+```
+
+**On Windows:**
+1. Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+2. Select "Desktop development with C++" during installation.
+3. Run in PowerShell/CMD:
+```powershell
+pip install --upgrade setuptools wheel pip
+pip install sqlean-py
+```
+
+**On macOS:**
+```bash
+xcode-select --install
+pip install --upgrade setuptools wheel pip
+pip install sqlean-py
+```
 
 3. Create a `.env` file in the root directory and add your API keys:
 

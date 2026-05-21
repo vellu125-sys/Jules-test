@@ -1,3 +1,9 @@
+# Tooling for build-from-source dependencies
+setuptools
+wheel
+pip>=24.0
+
+# Core dependencies
 streamlit
 google-generativeai
 anthropic
@@ -5,7 +11,7 @@ pandas
 openpyxl
 python-dotenv>=1.0.0
 
-# Arize Phoenix (Observability) - May require build tools for sqlean-py
+# Arize Phoenix (Observability)
 arize-phoenix
 openinference-instrumentation-anthropic
 arize-phoenix-otel
