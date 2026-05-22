@@ -7,9 +7,8 @@ A Streamlit-based web application to facilitate user entry of prompts, dynamic c
 - **Prompt Comparison**: Compare responses from different models for the same or different prompts.
 - **Model Selection**: Choose between Google Gemini (1.5 Flash, 1.5 Pro) and Anthropic Claude (3.5 Sonnet, 3 Opus).
 - **Usage Tracking**: Automatically calculates token usage and cost for each model call.
-- **LLM Judge**: Validate responses using an automated LLM judge (Gemini, Claude, or Arize Phoenix).
+- **LLM Judge**: Validate responses using an automated LLM judge (Gemini or Claude).
 - **Prompt Optimization**: Run batch tests against production data (CSV/Excel) using prompt templates.
-- **Arize Phoenix Integration**: Advanced observability and tracing for all LLM calls.
 - **Export to Excel**: Export your prompt history, responses, and usage data to an Excel spreadsheet.
 - **Session History**: Maintain a history of your current session's prompts and responses in a tabular format.
 
@@ -31,33 +30,6 @@ pip install -r requirements.txt
 
 *Note: Make sure you install `python-dotenv`, not the `dotenv` package.*
 
-#### Resolving `sqlean-py` Build Errors
-Arize Phoenix requires `sqlean-py`, which may need to be compiled from source on some systems. If you see "Failed to build installable wheels for sqlean-py", follow these steps:
-
-**On Linux (Ubuntu/Debian):**
-```bash
-sudo apt-get update
-sudo apt-get install -y build-essential python3-dev
-pip install --upgrade setuptools wheel pip
-pip install sqlean-py
-```
-
-**On Windows:**
-1. Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
-2. Select "Desktop development with C++" during installation.
-3. Run in PowerShell/CMD:
-```powershell
-pip install --upgrade setuptools wheel pip
-pip install sqlean-py
-```
-
-**On macOS:**
-```bash
-xcode-select --install
-pip install --upgrade setuptools wheel pip
-pip install sqlean-py
-```
-
 3. Create a `.env` file in the root directory and add your API keys:
 
 ```env
@@ -70,9 +42,6 @@ CLAUDE_API_KEY=your_claude_api_key_here
 ### Prompt Optimization Mode
 Identify poor-performing prompts by uploading a production dataset (CSV or Excel). Use the `{{data}}` placeholder in your prompt template to dynamically inject row values and run batch evaluations.
 
-### Arize Phoenix Observability
-All LLM calls are instrumented using Arize Phoenix. View detailed traces, latency, and token usage by clicking the Phoenix UI link in the sidebar (defaults to `http://localhost:6006`).
-
 ## Usage
 
 1. Run the Streamlit application:
@@ -83,9 +52,9 @@ streamlit run app.py
 
 2. Open the application in your browser (usually at `http://localhost:8501`).
 3. Select your desired model provider and model in the sidebar.
-5. Enter your prompt in the main area and click **Generate Response**.
-6. View the results in the comparison table below.
-7. Click **Export to Excel** to download your session history.
+4. Enter your prompt in the main area and click **Generate Response**.
+5. View the results in the comparison table below.
+6. Click **Export to Excel** to download your session history.
 
 ## Cost Calculation
 
