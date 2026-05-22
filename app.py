@@ -7,12 +7,15 @@ import os
 import sys
 
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv, find_dotenv
     # Load environment variables
-    load_dotenv()
+    dotenv_path = find_dotenv()
+    LOAD_SUCCESS = load_dotenv(dotenv_path)
     HAS_DOTENV = True
 except ImportError:
     HAS_DOTENV = False
+    LOAD_SUCCESS = False
+    dotenv_path = "N/A"
 
 
 st.set_page_config(page_title="Prompt Comparison App", layout="wide")
@@ -83,6 +86,20 @@ if not HAS_DOTENV:
     st.info(f"**Current Python Executable:** {sys.executable}")
     st.info(f"**Python Path:** {sys.path}")
     st.warning("Please try running: `pip uninstall dotenv` then `pip install python-dotenv` in your terminal.")
+elif not LOAD_SUCCESS:
+    st.warning("Failed to load .env file. Please ensure a file named `.env` exists in the same directory as `app.py`.")
+    st.info(f"**Attempted .env path:** {dotenv_path}")
+    st.info(f"**Current Working Directory:** {os.getcwd()}")
+else:
+    # Diagnostic: Check if keys are present
+    keys_found = []
+    if os.getenv("GEMINI_API_KEY"): keys_found.append("GEMINI_API_KEY")
+    if os.getenv("CLAUDE_API_KEY"): keys_found.append("CLAUDE_API_KEY")
+
+    if not keys_found:
+        st.error("No API keys found in the loaded .env file.")
+        st.info(f"**Loaded .env path:** {dotenv_path}")
+        st.info("Please ensure the file contains: `GEMINI_API_KEY=...` and `CLAUDE_API_KEY=...`")
 
 with st.sidebar:
     st.header("Model Selection")
