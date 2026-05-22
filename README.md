@@ -37,6 +37,14 @@ GEMINI_API_KEY=your_gemini_api_key_here
 CLAUDE_API_KEY=your_claude_api_key_here
 ```
 
+### Alternative: Streamlit Secrets
+If you are deploying on Streamlit Cloud or prefer Streamlit's native secrets management, you can create a file at `.streamlit/secrets.toml`:
+
+```toml
+GEMINI_API_KEY = "your_gemini_api_key_here"
+CLAUDE_API_KEY = "your_claude_api_key_here"
+```
+
 ## Features Detail
 
 ### Prompt Optimization Mode

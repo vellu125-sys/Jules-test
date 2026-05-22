@@ -97,9 +97,21 @@ else:
     if os.getenv("CLAUDE_API_KEY"): keys_found.append("CLAUDE_API_KEY")
 
     if not keys_found:
-        st.error("No API keys found in the loaded .env file.")
-        st.info(f"**Loaded .env path:** {dotenv_path}")
-        st.info("Please ensure the file contains: `GEMINI_API_KEY=...` and `CLAUDE_API_KEY=...`")
+        st.error("No API keys found in the environment or .env file.")
+        st.info(f"**Attempted .env path:** {os.path.abspath(dotenv_path) if dotenv_path else 'Not found'}")
+        st.info("Please ensure your `.env` file is in the same directory as `app.py` and contains the correct variable names.")
+
+        with st.expander("🔍 Advanced Environment Debug"):
+            st.write("**Current Working Directory:**", os.getcwd())
+            st.write("**All detected Environment Variables (subset):**")
+            env_vars = {k: f"{v[:3]}... (len: {len(v)})" for k, v in os.environ.items() if "_API_KEY" in k}
+            if env_vars:
+                st.json(env_vars)
+            else:
+                st.write("No variables containing '_API_KEY' found.")
+
+            if st.button("Reload Environment"):
+                st.rerun()
 
 with st.sidebar:
     st.header("Model Selection")
@@ -155,8 +167,10 @@ def process_prompt(prompt_text, model_provider, model_name, enable_judge, judge_
 
     if model_provider == "Gemini":
         api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key or api_key == "your_gemini_api_key_here":
-            return "Error: Gemini API Key not configured", None, 0, 0, 0, 0.0
+        if not api_key:
+            return "Error: GEMINI_API_KEY is missing from environment/file.", None, 0, 0, 0, 0.0
+        if api_key == "your_gemini_api_key_here":
+            return "Error: GEMINI_API_KEY is still using the placeholder value.", None, 0, 0, 0, 0.0
         response_text, usage = call_gemini(api_key, model_name, prompt_text)
         if usage:
             input_tokens = usage.prompt_token_count
@@ -165,8 +179,10 @@ def process_prompt(prompt_text, model_provider, model_name, enable_judge, judge_
             cost = calculate_cost(model_name, input_tokens, output_tokens)
     else:
         api_key = os.getenv("CLAUDE_API_KEY")
-        if not api_key or api_key == "your_claude_api_key_here":
-            return "Error: Claude API Key not configured", None, 0, 0, 0, 0.0
+        if not api_key:
+            return "Error: CLAUDE_API_KEY is missing from environment/file.", None, 0, 0, 0, 0.0
+        if api_key == "your_claude_api_key_here":
+            return "Error: CLAUDE_API_KEY is still using the placeholder value.", None, 0, 0, 0, 0.0
         response_text, usage = call_claude(api_key, model_name, prompt_text)
         if usage:
             input_tokens = usage.input_tokens
