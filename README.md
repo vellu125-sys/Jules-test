@@ -59,6 +59,18 @@ streamlit run app.py
 ```
 
 2. Open the application in your browser (usually at `http://localhost:8501`).
+
+### Direct Google GenAI Interface (Gradio)
+
+For a simpler, dedicated interface to Google's Gemini model, you can run the Gradio app:
+
+1. Run the Gradio application:
+
+```bash
+python3 gradio_app.py
+```
+
+2. Open the application at `http://localhost:7860`.
 3. Select your desired model provider and model in the sidebar.
 4. Enter your prompt in the main area and click **Generate Response**.
 5. View the results in the comparison table below.
