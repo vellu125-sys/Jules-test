@@ -52,17 +52,21 @@ Identify poor-performing prompts by uploading a production dataset (CSV or Excel
 
 ## Usage
 
+### Prompt Comparison App (Streamlit)
+
 1. Run the Streamlit application:
 
 ```bash
 streamlit run app.py
 ```
 
-2. Open the application in your browser (usually at `http://localhost:8501`).
+2. Open the application in your browser at `http://localhost:8501`.
+3. Select your desired model provider and model in the sidebar.
+4. Enter your prompt in the main area and click **Generate Response**.
+5. View the results in the comparison table below.
+6. Click **Export to Excel** to download your session history.
 
 ### Direct Google GenAI Interface (Gradio)
-
-For a simpler, dedicated interface to Google's Gemini model, you can run the Gradio app:
 
 1. Run the Gradio application:
 
@@ -70,11 +74,8 @@ For a simpler, dedicated interface to Google's Gemini model, you can run the Gra
 python3 gradio_app.py
 ```
 
-2. Open the application at `http://localhost:7860`.
-3. Select your desired model provider and model in the sidebar.
-4. Enter your prompt in the main area and click **Generate Response**.
-5. View the results in the comparison table below.
-6. Click **Export to Excel** to download your session history.
+2. Open the application in your browser at `http://localhost:7860`.
+3. Enter your prompt and click **Submit**.
 
 ## Cost Calculation
 
